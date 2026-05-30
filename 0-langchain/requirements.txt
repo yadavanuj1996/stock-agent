@@ -1,0 +1,4 @@
+langchain
+langchain-openai
+yfinance
+python-dotenv
