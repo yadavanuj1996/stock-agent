@@ -1,112 +1,82 @@
 import yaml
+import asyncio
 import yfinance as yf
 from pathlib import Path
 from langchain_openai import ChatOpenAI
-from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
-
+from mcp.client.streamable_http import streamablehttp_client
+from mcp import ClientSession
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# load skill instructions
-SKILL_PATH = Path(__file__).parent.parent / "skills" / "stock-research" / "SKILL.md"
-SKILL = SKILL_PATH.read_text()
+SKILL = (Path(__file__).parent.parent / "skills" / "stock-research" / "SKILL.md").read_text()
 
-# load subagent config
-CONFIG_PATH = Path(__file__).parent.parent / "subagents.yaml"
-CONFIG = yaml.safe_load(CONFIG_PATH.read_text())
+CONFIG = yaml.safe_load((Path(__file__).parent.parent / "subagents.yaml").read_text())
 MODEL = CONFIG["subagents"]["researcher"]["model"]
 
-# initialise LLM
+MCP_URL = "http://localhost:8050/mcp"
+
 llm = ChatOpenAI(model=MODEL)
 
-@tool
-def get_stock_price(ticker: str) -> str:
-    """Get current stock price and basic info for a given ticker symbol."""
+
+async def _run_async(ticker: str) -> dict:
+    # CSV fetched directly — not through MCP
     stock = yf.Ticker(ticker)
-    info = stock.info
-    return f"""
-    Company: {info.get('longName')}
-    Current Price: ${info.get('currentPrice')}
-    52 Week High: ${info.get('fiftyTwoWeekHigh')}
-    52 Week Low: ${info.get('fiftyTwoWeekLow')}
-    Market Cap: ${info.get('marketCap')}
-    P/E Ratio: {info.get('trailingPE')}
-    EPS: {info.get('trailingEps')}
-    Dividend Yield: {info.get('dividendYield')}
-    """
+    csv_data = stock.history(period="6mo").to_csv()
+    csv_1y_data = stock.history(period="1y").to_csv()
 
-@tool
-def get_stock_history(ticker: str) -> str:
-    """Get last 6 months of historical OHLCV data for a given ticker symbol."""
-    stock = yf.Ticker(ticker)
-    history = stock.history(period="6mo")
-    return history.to_string()
+    async with streamablehttp_client(MCP_URL) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-@tool
-def get_stock_news(ticker: str) -> str:
-    """Get latest news headlines for a given ticker symbol."""
-    stock = yf.Ticker(ticker)
-    news = stock.news[:5]
-    result = ""
-    for item in news:
-        result += f"- {item['content']['title']}\n"
-    return result
+            # discover tools dynamically from MCP server — no hardcoded definitions
+            mcp_tools = (await session.list_tools()).tools
+            lc_tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description or t.name,
+                        "parameters": t.inputSchema,
+                    },
+                }
+                for t in mcp_tools
+            ]
 
-@tool
-def get_stock_fundamentals(ticker: str) -> str:
-    """Get key fundamental data for a given ticker symbol."""
-    stock = yf.Ticker(ticker)
-    info = stock.info
-    return f"""
-    Revenue (TTM): ${info.get('totalRevenue')}
-    Profit Margin: {info.get('profitMargins')}
-    Return on Equity: {info.get('returnOnEquity')}
-    Debt to Equity: {info.get('debtToEquity')}
-    Free Cash Flow: ${info.get('freeCashflow')}
-    """
+            llm_with_tools = llm.bind_tools(lc_tools)
 
-tools = [get_stock_price, get_stock_history, get_stock_news, get_stock_fundamentals]
-llm_with_tools = llm.bind_tools(tools)
+            messages = [
+                SystemMessage(f"""
+                You are a stock research agent.
+                Follow these instructions carefully:
+                {SKILL}
+                """),
+                HumanMessage(f"Research the stock with ticker symbol: {ticker}"),
+            ]
 
-def run(ticker: str) -> dict:
-    """Run the researcher agent for a given ticker."""
-    
-    # fetch raw data directly
-    import yfinance as yf
-    stock = yf.Ticker(ticker)
-    history = stock.history(period="6mo")
-    
-    messages = [
-        SystemMessage(f"""
-        You are a stock research agent.
-        Follow these instructions carefully:
-        {SKILL}
-        """),
-        HumanMessage(f"Research the stock with ticker symbol: {ticker}")
-    ]
-
-    while True:
-        response = llm_with_tools.invoke(messages)
-        messages.append(response)
-        if not response.tool_calls:
-            break
-        for tool_call in response.tool_calls:
-            tool_name = tool_call["name"]
-            tool_args = tool_call["args"]
-            tool_fn = next(t for t in tools if t.name == tool_name)
-            tool_result = tool_fn.invoke(tool_args)
-            messages.append({
-                "role": "tool",
-                "content": str(tool_result),
-                "tool_call_id": tool_call["id"]
-            })
+            response = None
+            while True:
+                response = await llm_with_tools.ainvoke(messages)
+                messages.append(response)
+                if not response.tool_calls:
+                    break
+                for tc in response.tool_calls:
+                    result = await session.call_tool(tc["name"], tc["args"])
+                    content = result.content[0].text if result.content else ""
+                    messages.append({
+                        "role": "tool",
+                        "content": content,
+                        "tool_call_id": tc["id"],
+                    })
 
     return {
-        "summary": response.content,
-        "csv": history.to_csv(),         # real 6 month data as CSV
-        "ticker": ticker
+        "summary": response.content if response else "",
+        "csv": csv_data,
+        "csv_1y": csv_1y_data,
+        "ticker": ticker,
     }
-if __name__ == "__main__":
-    result = run("AAPL")
-    print(result)
+
+
+def run(ticker: str) -> dict:
+    return asyncio.run(_run_async(ticker))

@@ -42,12 +42,15 @@ print("Loaded stock data:", df.shape)
 
 
 def plot_price_ma(df, ticker):
-    ma50 = df['Close'].rolling(50).mean()
-    ma200 = df['Close'].rolling(200).mean()
+    df1y = pd.read_csv('/data/stock_data_1y.csv', index_col=0, parse_dates=True)
+    df1y.index = pd.to_datetime(df1y.index, utc=True).tz_convert(None)
+    df1y.columns = [col.strip() for col in df1y.columns]
+    ma50 = df1y['Close'].rolling(50).mean()
+    ma200 = df1y['Close'].rolling(200).mean()
     fig, ax = plt.subplots(figsize=(14, 8))
-    ax.plot(df.index, df['Close'], color='#00ff88', linewidth=1.5, label='Price')
-    ax.plot(df.index, ma50, color='#ffaa00', linewidth=1, label='50 MA')
-    ax.plot(df.index, ma200, color='#ff4444', linewidth=1, label='200 MA')
+    ax.plot(df1y.index, df1y['Close'], color='#00ff88', linewidth=1.5, label='Price')
+    ax.plot(df1y.index, ma50, color='#ffaa00', linewidth=1, label='50 MA')
+    ax.plot(df1y.index, ma200, color='#ff4444', linewidth=1, label='200 MA')
     ax.set_title(f'{ticker} Price + Moving Averages', fontsize=14)
     ax.set_xlabel('Date')
     ax.set_ylabel('Price ($)')
@@ -161,6 +164,55 @@ def plot_benchmark(df, ticker):
 
 """
 
+def _compute_indicators(csv_data: str, csv_1y_data: str, sp500_return: float) -> str:
+    """Compute technical indicators from CSV and return as formatted string for LLM."""
+    import io
+    import pandas as pd
+
+    # 6-month data — RSI, MACD, stock return (unchanged)
+    df = pd.read_csv(io.StringIO(csv_data), index_col=0, parse_dates=True)
+    df.index = pd.to_datetime(df.index, utc=True).tz_convert(None)
+    df.columns = [c.strip() for c in df.columns]
+    close = df['Close']
+
+    delta  = close.diff()
+    gain   = delta.clip(lower=0).rolling(14).mean()
+    loss   = (-delta.clip(upper=0)).rolling(14).mean()
+    rsi    = (100 - 100 / (1 + gain / loss)).iloc[-1]
+
+    ema12      = close.ewm(span=12, adjust=False).mean()
+    ema26      = close.ewm(span=26, adjust=False).mean()
+    macd_line  = (ema12 - ema26).iloc[-1]
+    signal     = (ema12 - ema26).ewm(span=9, adjust=False).mean().iloc[-1]
+
+    stock_return = ((close.iloc[-1] - close.iloc[0]) / close.iloc[0]) * 100
+
+    # 1-year data — MA50 and MA200 only
+    df1y = pd.read_csv(io.StringIO(csv_1y_data), index_col=0, parse_dates=True)
+    df1y.index = pd.to_datetime(df1y.index, utc=True).tz_convert(None)
+    df1y.columns = [c.strip() for c in df1y.columns]
+    ma50  = df1y['Close'].rolling(50).mean().iloc[-1]
+    ma200 = df1y['Close'].rolling(200).mean().iloc[-1]
+    trend        = "Uptrend" if close.iloc[-1] > ma200 else "Downtrend"
+    ma_signal    = "Golden Cross (bullish)" if ma50 > ma200 else "Death Cross (bearish)"
+    macd_signal  = "Bullish (MACD above signal)" if macd_line > signal else "Bearish (MACD below signal)"
+    vs_benchmark = f"{'Outperforming' if stock_return > sp500_return else 'Underperforming'} by {abs(stock_return - sp500_return):.2f}%"
+
+    return f"""
+50 Day MA:      ${ma50:.2f}
+200 Day MA:     ${ma200:.2f}
+Trend:          {trend} (price {'above' if close.iloc[-1] > ma200 else 'below'} 200 MA)
+MA Signal:      {ma_signal}
+RSI (14):       {rsi:.1f} ({'Overbought' if rsi > 70 else 'Oversold' if rsi < 30 else 'Neutral'})
+MACD Line:      {macd_line:.4f}
+Signal Line:    {signal:.4f}
+MACD Signal:    {macd_signal}
+6 Month Return: {stock_return:.2f}%
+S&P 500 Return: {sp500_return:.2f}%
+vs Benchmark:   {vs_benchmark}
+"""
+
+
 # chart calls injected after the boilerplate — always generate all 5
 _CHART_CALLS = """\
 plot_price_ma(df, "{ticker}")
@@ -175,6 +227,7 @@ def run(research_data: dict, ticker: str) -> dict:
     """Run the analyst agent on research data for a given ticker."""
 
     csv_data = research_data.get("csv", "") if isinstance(research_data, dict) else ""
+    csv_1y_data = research_data.get("csv_1y", "") if isinstance(research_data, dict) else ""
     summary = research_data.get("summary", "") if isinstance(research_data, dict) else str(research_data)
 
     # step 1 — pre-fetch S&P 500 for benchmark chart
@@ -187,7 +240,7 @@ def run(research_data: dict, ticker: str) -> dict:
     # step 2 — generate all charts directly (no LLM involvement)
     print("  → Generating charts...")
     chart_code = _BOILERPLATE + _CHART_CALLS.format(ticker=ticker)
-    result = execute_code(chart_code, csv_data=csv_data, sp500_csv_data=sp500_csv_data)
+    result = execute_code(chart_code, csv_data=csv_data, sp500_csv_data=sp500_csv_data, csv_1y_data=csv_1y_data)
     charts = result["charts"] if result["success"] else []
     if not result["success"]:
         print(f"  → Chart error: {result['error']}")
@@ -196,19 +249,23 @@ def run(research_data: dict, ticker: str) -> dict:
 
     # step 3 — LLM writes text analysis only
     print("  → Running text analysis...")
+    indicators = _compute_indicators(csv_data, csv_1y_data, sp500_return)
     response = llm.invoke([
         SystemMessage(f"""
         You are a stock analyst. Write a technical analysis of the stock.
 
         {ANALYSIS_SKILL}
 
-        S&P 500 6 month return: {sp500_return:.2f}%
         Charts have already been generated separately.
         """),
         HumanMessage(f"""
-        Analyse {ticker} based on the following research data:
+        Analyse {ticker} based on the following data:
 
+        ## Research Summary
         {summary}
+
+        ## Calculated Technical Indicators
+        {indicators}
         """)
     ])
 
@@ -216,29 +273,3 @@ def run(research_data: dict, ticker: str) -> dict:
         "analysis": response.content,
         "charts": charts
     }
-
-
-if __name__ == "__main__":
-    stock = yf.Ticker("AAPL")
-    history = stock.history(period="6mo")
-
-    sample_data = {
-        "summary": """
-        Company: Apple Inc.
-        Current Price: $309.90
-        52 Week High: $313.26
-        52 Week Low: $195.07
-        Market Cap: $4.55 Trillion
-        P/E Ratio: 37.52
-        Revenue: $451.44 Billion
-        Profit Margin: 27.15%
-        """,
-        "csv": history.to_csv(),
-        "ticker": "AAPL"
-    }
-
-    result = run(sample_data, "AAPL")
-    print("\n" + "="*50)
-    print("FINAL ANALYSIS:")
-    print("="*50)
-    print(result["analysis"])

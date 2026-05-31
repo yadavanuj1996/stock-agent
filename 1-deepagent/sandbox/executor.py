@@ -5,7 +5,7 @@ import os
 # connect to local Docker daemon
 client = docker.from_env()
 
-def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None) -> dict:
+def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None, csv_1y_data: str = None) -> dict:
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
         f.write(code)
@@ -14,6 +14,7 @@ def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None) ->
     output_dir = tempfile.mkdtemp()
     csv_file = None
     sp500_csv_file = None
+    csv_1y_file = None
 
     if csv_data:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
@@ -24,6 +25,11 @@ def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None) ->
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
             f.write(sp500_csv_data)
             sp500_csv_file = f.name
+
+    if csv_1y_data:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            f.write(csv_1y_data)
+            csv_1y_file = f.name
 
     container = None
 
@@ -38,6 +44,9 @@ def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None) ->
 
         if sp500_csv_file:
             volumes[sp500_csv_file] = {"bind": "/data/sp500_data.csv", "mode": "ro"}
+
+        if csv_1y_file:
+            volumes[csv_1y_file] = {"bind": "/data/stock_data_1y.csv", "mode": "ro"}
 
         container = client.containers.run(
             image="stock-sandbox",
@@ -87,33 +96,7 @@ def execute_code(code: str, csv_data: str = None, sp500_csv_data: str = None) ->
             os.unlink(csv_file)
         if sp500_csv_file:
             os.unlink(sp500_csv_file)
+        if csv_1y_file:
+            os.unlink(csv_1y_file)
         if not os.listdir(output_dir):
             os.rmdir(output_dir)
-
-if __name__ == "__main__":
-    # quick test
-    test_code = """
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-
-# generate sample data
-x = np.linspace(0, 10, 100)
-y = np.sin(x)
-
-# plot
-plt.style.use('dark_background')
-plt.figure(figsize=(14, 8))
-plt.plot(x, y, color='#00ff88', linewidth=1.5)
-plt.title('Test Chart')
-plt.grid(alpha=0.3)
-plt.savefig('/output/test.png', dpi=150, bbox_inches='tight')
-plt.close()
-
-print("Chart generated successfully")
-"""
-    result = execute_code(test_code)
-    print(f"Success: {result['success']}")
-    print(f"Output: {result['output']}")
-    print(f"Charts: {result['charts']}")
-    print(f"Error: {result['error']}")
