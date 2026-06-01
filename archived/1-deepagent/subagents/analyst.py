@@ -1,6 +1,4 @@
 import yaml
-import calendar as _cal
-from datetime import date, timedelta
 from pathlib import Path
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -187,8 +185,7 @@ def _compute_indicators(csv_data: str, csv_1y_data: str, sp500_return: float) ->
     macd_line  = (ema12 - ema26).iloc[-1]
     signal     = (ema12 - ema26).ewm(span=9, adjust=False).mean().iloc[-1]
 
-    open_price = df['Open'].iloc[0]
-    stock_return = ((close.iloc[-1] - open_price) / open_price) * 100
+    stock_return = ((close.iloc[-1] - close.iloc[0]) / close.iloc[0]) * 100
 
     # 1-year data — MA50 and MA200 only
     df1y = pd.read_csv(io.StringIO(csv_1y_data), index_col=0, parse_dates=True)
@@ -235,30 +232,10 @@ def run(research_data: dict, ticker: str) -> dict:
 
     # step 1 — pre-fetch S&P 500 for benchmark chart
     print("  → Fetching S&P 500 benchmark data...")
-    today = date.today()
-    recent = yf.Ticker("SPY").history(
-        start=(today - timedelta(days=5)).strftime("%Y-%m-%d"),
-        end=(today + timedelta(days=1)).strftime("%Y-%m-%d"),
-        auto_adjust=False,
-    )
-    end_date = recent.index[-1].date()
-    month = end_date.month - 6
-    year = end_date.year
-    if month <= 0:
-        month += 12
-        year -= 1
-    start_date = date(year, month, min(end_date.day, _cal.monthrange(year, month)[1]))
-    start_str = start_date.strftime("%Y-%m-%d")
-    end_str = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
-    attempted = today.strftime("%Y-%m-%d")
-    status = "found" if end_date == today else f"no data — using {end_date}"
-    print(f"  → End date attempted: {attempted} ({status})")
-    print(f"  → S&P 500 window: {start_date} → {end_date}")
-
-    sp500_history = yf.Ticker("^GSPC").history(start=start_str, end=end_str, auto_adjust=False)
+    sp500_history = yf.Ticker("^GSPC").history(period="6mo")
     sp500_csv_data = sp500_history.to_csv()
-    sp500_return = ((sp500_history['Close'].iloc[-1] - sp500_history['Open'].iloc[0])
-                    / sp500_history['Open'].iloc[0]) * 100
+    sp500_return = ((sp500_history['Close'].iloc[-1] - sp500_history['Close'].iloc[0])
+                    / sp500_history['Close'].iloc[0]) * 100
 
     # step 2 — generate all charts directly (no LLM involvement)
     print("  → Generating charts...")

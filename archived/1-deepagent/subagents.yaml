@@ -1,0 +1,23 @@
+orchestrator:
+  model: gpt-4o
+  description: Master agent that receives user requests, delegates to subagents and compiles final response
+  memory: AGENTS.md
+
+subagents:
+  researcher:
+    model: gpt-4o-mini
+    description: Fetches and gathers all stock data including price, fundamentals, historical data and news
+    skills:
+      - stock-research
+    tools:
+      - get_stock_price
+      - get_stock_history
+      - get_stock_news
+      - get_stock_fundamentals
+
+  analyst:
+    model: gpt-4o-mini
+    description: Analyses stock data, performs technical analysis, generates charts, compares against benchmarks and gives buy/hold/sell recommendations
+    skills:
+      - stock-analysis
+    tools: []

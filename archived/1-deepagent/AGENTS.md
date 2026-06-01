@@ -30,18 +30,6 @@ Always structure your final response as:
 4. Recommendation
 5. Disclaimer
 
-### Section 2 — Technical Analysis must always include these exact fields:
-- **50-Day Moving Average**: $<value>
-- **200-Day Moving Average**: $<value>
-- **RSI (14)**: <value> (<Overbought|Neutral|Oversold>)
-- **MACD**: <Bullish|Bearish> (MACD Line <above|below> Signal Line)
-- **Trend Direction**: <Uptrend|Downtrend> (Price <above|below> 200 MA)
-- **Stock 6-Month Return**: <value>%
-- **S&P 500 6-Month Return**: <value>%
-- **Benchmark**: <Outperforming|Underperforming> by <value>%
-
-Do not omit or reword these fields. Additional commentary after them is welcome.
-
 ## Lessons Learned
 - Users prefer visual charts over raw numbers
 - Always compare against S&P 500 performance when analysing a stock

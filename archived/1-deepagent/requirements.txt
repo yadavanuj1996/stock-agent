@@ -9,7 +9,4 @@ matplotlib
 seaborn
 pyyaml
 mcp
-a2a-sdk
-uvicorn
-starlette
-httpx
+python-a2a
