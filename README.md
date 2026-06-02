@@ -18,15 +18,28 @@ A multi-agent stock research system. Type a company name, get a full technical a
 <img width="978" height="648" alt="Screenshot 2026-06-03 at 1 44 29 AM" src="https://github.com/user-attachments/assets/31376800-6536-45c5-9b6f-1aba53887da8" />
 
 
-## TODO
+**Part 1 of this project is complete.** All three stages (LangChain multi-agent, MCP server, A2A protocol) are fully working.
 
-### Multimodal chart analysis (`1-deepagent`)
+## Version 2 — Roadmap
 
-After charts are generated in the Docker sandbox, feed the PNG files back to a vision-capable LLM (GPT-4o with image input). The LLM should visually analyse the charts and add pattern-based observations to the technical analysis — e.g. head and shoulders patterns, support/resistance levels, trend channels — things that are easier to spot visually than to calculate from raw numbers.
+### Phase 1 — AWS hosting
+- Deploy current system to AWS
+- Document + blog + video
 
-**Current behaviour:** charts generated for human viewing only; LLM analyst reasons purely from text summary.
+### Phase 2 — Portfolio MCP server
+- `get_my_portfolio()` tool
+- Compare holdings vs research
 
-**Target behaviour:** charts generated → fed to GPT-4o vision → visual pattern analysis appended to final report.
+### Phase 3 — Twitter sentiment agent
+- `sentiment_agent.py` (A2A service)
+- Feeds sentiment score to analyst
 
-Where to add it: `1-deepagent/subagents/analyst.py`, after `execute_code` returns chart paths and before the text analysis LLM call. Read each PNG as base64, pass to GPT-4o with `image_url` content blocks, append the visual observations to the system prompt for the analysis step.
+### Phase 4 — Multimodal chart analysis
+- Charts → GPT-4o vision
+- Pattern observations added to report
+
+### Phase 5 — Trading suggestion agent
+- `trading_agent.py` (A2A service)
+- Long term strategy
+- Short term trade (2-4hr or 1-3 day)
 
