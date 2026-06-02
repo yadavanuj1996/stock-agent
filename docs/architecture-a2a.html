@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Agent — Architecture</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f9f9f7; color: #1a1a18; padding: 32px 16px; }
+  .card { max-width: 820px; margin: 0 auto; background: #fff; border: 1px solid #e0dfd8; border-radius: 16px; padding: 28px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #d0cfd8; background: #f4f3ee; color: #555; font-size: 13px; cursor: pointer; transition: all .2s; font-family: inherit; }
+  .tab.active { background: #e8f0fe; border-color: #93b4f5; color: #2a52c9; font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: fi .2s ease; }
+  @keyframes fi { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  svg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .th { font-size: 13px; font-weight: 500; fill: #1a1a18; }
+  .ts { font-size: 11px; font-weight: 400; fill: #555; }
+  .arr { stroke: #888; stroke-width: 1.5; fill: none; }
+  .c-purple rect, .c-purple ellipse { fill: #EEEDFE; stroke: #AFA9EC; }
+  .c-purple text { fill: #3C3489; }
+  .c-teal rect, .c-teal ellipse { fill: #E1F5EE; stroke: #5DCAA5; }
+  .c-teal text { fill: #085041; }
+  .c-coral rect, .c-coral ellipse { fill: #FAECE7; stroke: #F0997B; }
+  .c-coral text { fill: #712B13; }
+  .c-gray rect, .c-gray ellipse { fill: #F1EFE8; stroke: #B4B2A9; }
+  .c-gray text { fill: #444441; }
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #eeeee8; }
+  .nav-btn { padding: 6px 18px; border-radius: 8px; border: 1px solid #d0cfd8; background: #f4f3ee; color: #1a1a18; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-btn:not(:disabled):hover { background: #eeeee8; }
+  .prog { font-size: 12px; color: #999; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Stock Research Agent — Architecture</h1>
+  <p class="subtitle">Interactive system design · click through each view</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="show(0)">System overview</button>
+    <button class="tab" onclick="show(1)">Communication flow</button>
+    <button class="tab" onclick="show(2)">3 servers explained</button>
+    <button class="tab" onclick="show(3)">What is a subagent?</button>
+  </div>
+
+  <!-- Panel 0: System overview -->
+  <div id="p0" class="panel active">
+    <svg width="100%" viewBox="0 0 760 500">
+      <defs>
+        <marker id="a0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#993C1D" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#0F6E56" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+      </defs>
+
+      <!-- Terminal 1 -->
+      <rect x="20" y="20" width="180" height="230" rx="10" fill="none" stroke="#B4B2A9" stroke-width="0.8" stroke-dasharray="5 3"/>
+      <text class="ts" x="110" y="38" text-anchor="middle" fill="#888">Terminal 1</text>
+      <g class="c-teal">
+        <rect x="36" y="48" width="148" height="56" rx="8" stroke-width="0.5"/>
+        <text class="th" x="110" y="72" text-anchor="middle" dominant-baseline="central">MCP server</text>
+        <text class="ts" x="110" y="90" text-anchor="middle" dominant-baseline="central">server.py · :8050</text>
+      </g>
+      <g class="c-teal">
+        <rect x="36" y="116" width="148" height="116" rx="6" stroke-width="0.5"/>
+        <text class="ts" x="110" y="138" text-anchor="middle" dominant-baseline="central">get_stock_price</text>
+        <text class="ts" x="110" y="158" text-anchor="middle" dominant-baseline="central">get_stock_history</text>
+        <text class="ts" x="110" y="178" text-anchor="middle" dominant-baseline="central">get_stock_news</text>
+        <text class="ts" x="110" y="198" text-anchor="middle" dominant-baseline="central">get_stock_fundamentals</text>
+        <text class="ts" x="110" y="218" text-anchor="middle" dominant-baseline="central">→ yfinance (real data)</text>
+      </g>
+
+      <!-- Terminal 2 -->
+      <rect x="220" y="20" width="520" height="460" rx="10" fill="none" stroke="#B4B2A9" stroke-width="0.8" stroke-dasharray="5 3"/>
+      <text class="ts" x="480" y="38" text-anchor="middle" fill="#888">Terminal 2 — python run.py</text>
+
+      <!-- run.py -->
+      <g class="c-gray">
+        <rect x="310" y="48" width="280" height="44" rx="8" stroke-width="0.5"/>
+        <text class="th" x="450" y="66" text-anchor="middle" dominant-baseline="central">run.py — entry point</text>
+        <text class="ts" x="450" y="82" text-anchor="middle" dominant-baseline="central">boots agents · polls health · starts input loop</text>
+      </g>
+
+      <!-- main.py -->
+      <g class="c-purple">
+        <rect x="236" y="112" width="448" height="44" rx="8" stroke-width="0.5"/>
+        <text class="th" x="460" y="130" text-anchor="middle" dominant-baseline="central">main.py — orchestrator (GPT-4o)</text>
+        <text class="ts" x="460" y="146" text-anchor="middle" dominant-baseline="central">extract ticker · call A2A services · compile final response</text>
+      </g>
+      <line x1="450" y1="92" x2="450" y2="110" stroke="#888" stroke-width="1" marker-end="url(#a0)"/>
+
+      <!-- Researcher A2A -->
+      <g class="c-coral">
+        <rect x="236" y="180" width="210" height="116" rx="8" stroke-width="0.5"/>
+        <text class="th" x="341" y="204" text-anchor="middle" dominant-baseline="central">Researcher service</text>
+        <text class="ts" x="341" y="222" text-anchor="middle" dominant-baseline="central">researcher_agent.py · :8001</text>
+        <text class="ts" x="341" y="240" text-anchor="middle" dominant-baseline="central">A2A HTTP interface</text>
+        <text class="ts" x="341" y="258" text-anchor="middle" dominant-baseline="central">wraps → researcher.py</text>
+        <text class="ts" x="341" y="276" text-anchor="middle" dominant-baseline="central">AgentCard + Executor</text>
+      </g>
+
+      <!-- Analyst A2A -->
+      <g class="c-coral">
+        <rect x="474" y="180" width="210" height="116" rx="8" stroke-width="0.5"/>
+        <text class="th" x="579" y="204" text-anchor="middle" dominant-baseline="central">Analyst service</text>
+        <text class="ts" x="579" y="222" text-anchor="middle" dominant-baseline="central">analyst_agent.py · :8002</text>
+        <text class="ts" x="579" y="240" text-anchor="middle" dominant-baseline="central">A2A HTTP interface</text>
+        <text class="ts" x="579" y="258" text-anchor="middle" dominant-baseline="central">wraps → analyst.py</text>
+        <text class="ts" x="579" y="276" text-anchor="middle" dominant-baseline="central">AgentCard + Executor</text>
+      </g>
+
+      <line x1="380" y1="156" x2="341" y2="178" stroke="#993C1D" stroke-width="1" marker-end="url(#a1)"/>
+      <line x1="520" y1="156" x2="579" y2="178" stroke="#993C1D" stroke-width="1" marker-end="url(#a1)"/>
+
+      <!-- researcher.py subagent -->
+      <g class="c-purple">
+        <rect x="236" y="320" width="210" height="56" rx="8" stroke-width="0.5"/>
+        <text class="th" x="341" y="344" text-anchor="middle" dominant-baseline="central">researcher.py (subagent)</text>
+        <text class="ts" x="341" y="362" text-anchor="middle" dominant-baseline="central">LangChain · GPT-4o-mini · MCP</text>
+      </g>
+
+      <!-- analyst.py subagent -->
+      <g class="c-purple">
+        <rect x="474" y="320" width="210" height="56" rx="8" stroke-width="0.5"/>
+        <text class="th" x="579" y="344" text-anchor="middle" dominant-baseline="central">analyst.py (subagent)</text>
+        <text class="ts" x="579" y="362" text-anchor="middle" dominant-baseline="central">charts · LLM · sandbox</text>
+      </g>
+
+      <line x1="341" y1="296" x2="341" y2="318" stroke="#888" stroke-width="1" marker-end="url(#a0)"/>
+      <line x1="579" y1="296" x2="579" y2="318" stroke="#888" stroke-width="1" marker-end="url(#a0)"/>
+
+      <!-- Docker -->
+      <g class="c-gray">
+        <rect x="474" y="398" width="210" height="44" rx="8" stroke-width="0.5"/>
+        <text class="th" x="579" y="416" text-anchor="middle" dominant-baseline="central">Docker sandbox</text>
+        <text class="ts" x="579" y="432" text-anchor="middle" dominant-baseline="central">executor.py · 5 charts</text>
+      </g>
+      <line x1="579" y1="376" x2="579" y2="396" stroke="#888" stroke-width="1" marker-end="url(#a0)"/>
+
+      <!-- MCP connection -->
+      <path d="M236 348 L210 348 L210 76 L184 76" fill="none" stroke="#1D9E75" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+      <text class="ts" x="222" y="340" text-anchor="middle" fill="#0F6E56">MCP</text>
+
+      <!-- User box -->
+      <g class="c-gray">
+        <rect x="310" y="452" width="280" height="20" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="450" y="465" text-anchor="middle" dominant-baseline="central">you type "apple" → full report + 5 charts</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Panel 1: Communication flow -->
+  <div id="p1" class="panel">
+    <svg width="100%" viewBox="0 0 760 560">
+      <defs>
+        <marker id="b0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#993C1D" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="b1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+      </defs>
+
+      <!-- Headers -->
+      <g class="c-gray"><rect x="20" y="20" width="90" height="34" rx="6" stroke-width="0.5"/>
+        <text class="th" x="65" y="40" text-anchor="middle" dominant-baseline="central">You</text></g>
+      <g class="c-purple"><rect x="140" y="20" width="130" height="34" rx="6" stroke-width="0.5"/>
+        <text class="th" x="205" y="40" text-anchor="middle" dominant-baseline="central">main.py</text></g>
+      <g class="c-coral"><rect x="300" y="20" width="170" height="34" rx="6" stroke-width="0.5"/>
+        <text class="th" x="385" y="40" text-anchor="middle" dominant-baseline="central">Researcher :8001</text></g>
+      <g class="c-coral"><rect x="500" y="20" width="170" height="34" rx="6" stroke-width="0.5"/>
+        <text class="th" x="585" y="40" text-anchor="middle" dominant-baseline="central">Analyst :8002</text></g>
+
+      <!-- Lifelines -->
+      <line x1="65" y1="54" x2="65" y2="540" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="205" y1="54" x2="205" y2="540" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="385" y1="54" x2="385" y2="540" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="585" y1="54" x2="585" y2="540" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+
+      <!-- 1. user input -->
+      <g class="c-gray"><rect x="22" y="74" width="86" height="30" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="65" y="92" text-anchor="middle" dominant-baseline="central">"apple"</text></g>
+      <line x1="108" y1="89" x2="138" y2="89" stroke="#888" stroke-width="1" marker-end="url(#b1)"/>
+
+      <!-- 2. GPT-4o extracts ticker -->
+      <g class="c-purple"><rect x="148" y="118" width="114" height="34" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="205" y="131" text-anchor="middle" dominant-baseline="central">GPT-4o call</text>
+        <text class="ts" x="205" y="145" text-anchor="middle" dominant-baseline="central">→ ticker = AAPL</text></g>
+
+      <!-- 3. POST researcher -->
+      <line x1="205" y1="152" x2="205" y2="172" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="205" y1="172" x2="298" y2="172" stroke="#993C1D" stroke-width="1" marker-end="url(#b0)"/>
+      <g class="c-coral"><rect x="210" y="162" width="80" height="20" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="250" y="174" text-anchor="middle" dominant-baseline="central">POST :8001</text></g>
+      <g class="c-gray"><rect x="302" y="162" width="164" height="20" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="384" y="174" text-anchor="middle" dominant-baseline="central">message.text = "AAPL"</text></g>
+
+      <!-- 4. researcher work -->
+      <g class="c-coral"><rect x="304" y="196" width="162" height="60" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="385" y="214" text-anchor="middle" dominant-baseline="central">MCP tools called</text>
+        <text class="ts" x="385" y="230" text-anchor="middle" dominant-baseline="central">yfinance data fetched</text>
+        <text class="ts" x="385" y="246" text-anchor="middle" dominant-baseline="central">LangChain agent loop</text></g>
+
+      <!-- 5. researcher response -->
+      <line x1="385" y1="256" x2="385" y2="276" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="383" y1="276" x2="207" y2="276" stroke="#993C1D" stroke-width="1" marker-end="url(#b0)"/>
+      <g class="c-gray"><rect x="210" y="264" width="162" height="24" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="291" y="278" text-anchor="middle" dominant-baseline="central">{summary, csv, csv_1y}</text></g>
+
+      <!-- 6. POST analyst -->
+      <line x1="205" y1="300" x2="205" y2="320" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="205" y1="320" x2="498" y2="320" stroke="#993C1D" stroke-width="1" marker-end="url(#b0)"/>
+      <g class="c-coral"><rect x="210" y="310" width="80" height="20" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="250" y="322" text-anchor="middle" dominant-baseline="central">POST :8002</text></g>
+      <g class="c-gray"><rect x="300" y="310" width="188" height="20" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="394" y="322" text-anchor="middle" dominant-baseline="central">{research_data, ticker}</text></g>
+
+      <!-- 7. analyst work -->
+      <g class="c-coral"><rect x="504" y="344" width="162" height="60" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="585" y="362" text-anchor="middle" dominant-baseline="central">Docker sandbox</text>
+        <text class="ts" x="585" y="378" text-anchor="middle" dominant-baseline="central">5 charts generated</text>
+        <text class="ts" x="585" y="394" text-anchor="middle" dominant-baseline="central">GPT-4o-mini analysis</text></g>
+
+      <!-- 8. analyst response -->
+      <line x1="585" y1="404" x2="585" y2="424" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <line x1="583" y1="424" x2="207" y2="424" stroke="#993C1D" stroke-width="1" marker-end="url(#b0)"/>
+      <g class="c-gray"><rect x="270" y="412" width="304" height="24" rx="3" stroke-width="0.5"/>
+        <text class="ts" x="422" y="426" text-anchor="middle" dominant-baseline="central">{analysis: "...", charts: [path1, path2, ...]}</text></g>
+
+      <!-- 9. final response -->
+      <line x1="205" y1="448" x2="205" y2="468" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 3"/>
+      <g class="c-purple"><rect x="148" y="468" width="114" height="34" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="205" y="481" text-anchor="middle" dominant-baseline="central">GPT-4o compiles</text>
+        <text class="ts" x="205" y="495" text-anchor="middle" dominant-baseline="central">final report</text></g>
+      <line x1="148" y1="485" x2="108" y2="485" stroke="#888" stroke-width="1" marker-end="url(#b1)"/>
+      <g class="c-gray"><rect x="22" y="472" width="86" height="34" rx="4" stroke-width="0.5"/>
+        <text class="ts" x="65" y="485" text-anchor="middle" dominant-baseline="central">report +</text>
+        <text class="ts" x="65" y="499" text-anchor="middle" dominant-baseline="central">5 charts</text></g>
+    </svg>
+  </div>
+
+  <!-- Panel 2: 3 servers -->
+  <div id="p2" class="panel">
+    <svg width="100%" viewBox="0 0 760 360">
+      <defs>
+        <marker id="c0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+      </defs>
+
+      <!-- Server 1 -->
+      <g class="c-teal">
+        <rect x="40" y="40" width="200" height="280" rx="12" stroke-width="0.5"/>
+        <text class="th" x="140" y="70" text-anchor="middle" dominant-baseline="central">Server 1</text>
+        <text class="th" x="140" y="92" text-anchor="middle" dominant-baseline="central">MCP server</text>
+        <text class="ts" x="140" y="114" text-anchor="middle" dominant-baseline="central">server.py</text>
+        <text class="ts" x="140" y="132" text-anchor="middle" dominant-baseline="central">port: 8050</text>
+        <text class="ts" x="140" y="160" text-anchor="middle" dominant-baseline="central">Protocol: MCP</text>
+        <text class="ts" x="140" y="178" text-anchor="middle" dominant-baseline="central">(streamable-http)</text>
+        <text class="ts" x="140" y="206" text-anchor="middle" dominant-baseline="central">Exposes stock tools</text>
+        <text class="ts" x="140" y="224" text-anchor="middle" dominant-baseline="central">to any LLM client</text>
+        <text class="ts" x="140" y="252" text-anchor="middle" dominant-baseline="central">Started: manually</text>
+        <text class="ts" x="140" y="270" text-anchor="middle" dominant-baseline="central">in Terminal 1</text>
+      </g>
+
+      <!-- Server 2 -->
+      <g class="c-coral">
+        <rect x="280" y="40" width="200" height="280" rx="12" stroke-width="0.5"/>
+        <text class="th" x="380" y="70" text-anchor="middle" dominant-baseline="central">Server 2</text>
+        <text class="th" x="380" y="92" text-anchor="middle" dominant-baseline="central">Researcher A2A</text>
+        <text class="ts" x="380" y="114" text-anchor="middle" dominant-baseline="central">researcher_agent.py</text>
+        <text class="ts" x="380" y="132" text-anchor="middle" dominant-baseline="central">port: 8001</text>
+        <text class="ts" x="380" y="160" text-anchor="middle" dominant-baseline="central">Protocol: A2A</text>
+        <text class="ts" x="380" y="178" text-anchor="middle" dominant-baseline="central">(HTTP+JSON)</text>
+        <text class="ts" x="380" y="206" text-anchor="middle" dominant-baseline="central">Receives ticker string</text>
+        <text class="ts" x="380" y="224" text-anchor="middle" dominant-baseline="central">returns research dict</text>
+        <text class="ts" x="380" y="252" text-anchor="middle" dominant-baseline="central">Started: by run.py</text>
+        <text class="ts" x="380" y="270" text-anchor="middle" dominant-baseline="central">background thread</text>
+      </g>
+
+      <!-- Server 3 -->
+      <g class="c-coral">
+        <rect x="520" y="40" width="200" height="280" rx="12" stroke-width="0.5"/>
+        <text class="th" x="620" y="70" text-anchor="middle" dominant-baseline="central">Server 3</text>
+        <text class="th" x="620" y="92" text-anchor="middle" dominant-baseline="central">Analyst A2A</text>
+        <text class="ts" x="620" y="114" text-anchor="middle" dominant-baseline="central">analyst_agent.py</text>
+        <text class="ts" x="620" y="132" text-anchor="middle" dominant-baseline="central">port: 8002</text>
+        <text class="ts" x="620" y="160" text-anchor="middle" dominant-baseline="central">Protocol: A2A</text>
+        <text class="ts" x="620" y="178" text-anchor="middle" dominant-baseline="central">(HTTP+JSON)</text>
+        <text class="ts" x="620" y="206" text-anchor="middle" dominant-baseline="central">Receives research dict</text>
+        <text class="ts" x="620" y="224" text-anchor="middle" dominant-baseline="central">returns analysis+charts</text>
+        <text class="ts" x="620" y="252" text-anchor="middle" dominant-baseline="central">Started: by run.py</text>
+        <text class="ts" x="620" y="270" text-anchor="middle" dominant-baseline="central">background thread</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Panel 3: subagent explanation -->
+  <div id="p3" class="panel">
+    <svg width="100%" viewBox="0 0 760 400">
+      <!-- researcher_agent.py = door -->
+      <g class="c-coral">
+        <rect x="40" y="40" width="320" height="160" rx="12" stroke-width="0.5"/>
+        <text class="th" x="200" y="68" text-anchor="middle" dominant-baseline="central">researcher_agent.py</text>
+        <text class="ts" x="200" y="90" text-anchor="middle" dominant-baseline="central">The A2A HTTP interface (the door)</text>
+        <text class="ts" x="200" y="114" text-anchor="middle" dominant-baseline="central">— listens on port 8001</text>
+        <text class="ts" x="200" y="132" text-anchor="middle" dominant-baseline="central">— exposes AgentCard at /.well-known/</text>
+        <text class="ts" x="200" y="150" text-anchor="middle" dominant-baseline="central">— receives tasks, delegates to researcher.py</text>
+        <text class="ts" x="200" y="168" text-anchor="middle" dominant-baseline="central">— sends JSON result back over HTTP</text>
+      </g>
+
+      <!-- researcher.py = worker -->
+      <g class="c-purple">
+        <rect x="40" y="226" width="320" height="150" rx="12" stroke-width="0.5"/>
+        <text class="th" x="200" y="254" text-anchor="middle" dominant-baseline="central">researcher.py</text>
+        <text class="ts" x="200" y="276" text-anchor="middle" dominant-baseline="central">The actual subagent (the worker)</text>
+        <text class="ts" x="200" y="298" text-anchor="middle" dominant-baseline="central">— LangChain agent loop</text>
+        <text class="ts" x="200" y="316" text-anchor="middle" dominant-baseline="central">— GPT-4o-mini decides which tools to call</text>
+        <text class="ts" x="200" y="334" text-anchor="middle" dominant-baseline="central">— connects to MCP server for tools</text>
+        <text class="ts" x="200" y="352" text-anchor="middle" dominant-baseline="central">— returns {summary, csv, csv_1y}</text>
+      </g>
+
+      <!-- Arrow between them -->
+      <line x1="200" y1="200" x2="200" y2="224" stroke="#888" stroke-width="1.5" marker-end="url(#c0)"/>
+      <text style="font-size:11px;fill:#888;" x="210" y="216">delegates to</text>
+
+      <!-- Right side explanation -->
+      <g class="c-gray">
+        <rect x="400" y="40" width="320" height="336" rx="12" stroke-width="0.5"/>
+        <text class="th" x="560" y="70" text-anchor="middle" dominant-baseline="central">What is a subagent?</text>
+        <text class="ts" x="560" y="100" text-anchor="middle" dominant-baseline="central">A subagent is a smaller specialised</text>
+        <text class="ts" x="560" y="118" text-anchor="middle" dominant-baseline="central">agent that the orchestrator delegates</text>
+        <text class="ts" x="560" y="136" text-anchor="middle" dominant-baseline="central">specific tasks to.</text>
+        <text class="ts" x="560" y="166" text-anchor="middle" dominant-baseline="central">researcher.py = subagent</text>
+        <text class="ts" x="560" y="184" text-anchor="middle" dominant-baseline="central">It has its own: model (gpt-4o-mini)</text>
+        <text class="ts" x="560" y="202" text-anchor="middle" dominant-baseline="central">tools, skill definition, and memory</text>
+        <text class="ts" x="560" y="232" text-anchor="middle" dominant-baseline="central">researcher_agent.py = transport</text>
+        <text class="ts" x="560" y="250" text-anchor="middle" dominant-baseline="central">Just the HTTP wrapper. No intelligence.</text>
+        <text class="ts" x="560" y="268" text-anchor="middle" dominant-baseline="central">Could be replaced with gRPC, websocket,</text>
+        <text class="ts" x="560" y="286" text-anchor="middle" dominant-baseline="central">or a direct function call — the subagent</text>
+        <text class="ts" x="560" y="304" text-anchor="middle" dominant-baseline="central">logic in researcher.py stays the same.</text>
+        <text class="ts" x="560" y="334" text-anchor="middle" dominant-baseline="central">subagents.yaml describes researcher.py</text>
+        <text class="ts" x="560" y="352" text-anchor="middle" dominant-baseline="central">not researcher_agent.py</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn" id="prev" onclick="nav(-1)" disabled>← Previous</button>
+    <p class="prog" id="prog">1 / 4</p>
+    <button class="nav-btn" id="next" onclick="nav(1)">Next →</button>
+  </div>
+</div>
+<script>
+let cur=0,total=4;
+function show(i){
+  document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+  document.querySelectorAll('.tab').forEach((b,j)=>b.classList.toggle('active',j===i));
+  document.getElementById('prev').disabled=i===0;
+  document.getElementById('next').disabled=i===total-1;
+  document.getElementById('prog').textContent=(i+1)+' / '+total;
+  cur=i;
+}
+function nav(d){show(Math.max(0,Math.min(total-1,cur+d)));}
+</script>
+</body>
+</html>

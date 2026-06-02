@@ -16,7 +16,7 @@ A multi-agent stock research system. Type a company name, get a full technical a
 |---|---|---|
 | 1 — LangChain multi-agent | `1-deepagent/` | ✅ Done |
 | 2 — MCP server | `2-mcp-server/` | ✅ Done |
-| 3 — Agent-to-agent (A2A) | `3-a2a/` | ✅ Done |
+| 3 — Agent-to-agent (A2A) | `3-a2a/` | ✅ Done · **[Open interactive explainer](https://htmlpreview.github.io/?https://raw.githubusercontent.com/yadavanuj1996/stock-agent/master/docs/architecture-a2a.html)** |
 
 ## TODO
 
