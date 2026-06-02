@@ -29,3 +29,9 @@ After charts are generated in the Docker sandbox, feed the PNG files back to a v
 **Target behaviour:** charts generated → fed to GPT-4o vision → visual pattern analysis appended to final report.
 
 Where to add it: `1-deepagent/subagents/analyst.py`, after `execute_code` returns chart paths and before the text analysis LLM call. Read each PNG as base64, pass to GPT-4o with `image_url` content blocks, append the visual observations to the system prompt for the analysis step.
+
+
+<img width="930" height="804" alt="Screenshot 2026-06-03 at 1 43 44 AM" src="https://github.com/user-attachments/assets/21941c3b-4f5e-4b73-b79d-0324ae535979" />
+<img width="930" height="804" alt="Screenshot 2026-06-03 at 1 44 10 AM" src="https://github.com/user-attachments/assets/79adcd76-7a91-4ab1-8754-af3a81a4e59c" />
+<img width="978" height="648" alt="Screenshot 2026-06-03 at 1 44 19 AM" src="https://github.com/user-attachments/assets/d1a64f2f-0172-4e53-8614-552348032a84" />
+<img width="978" height="648" alt="Screenshot 2026-06-03 at 1 44 29 AM" src="https://github.com/user-attachments/assets/31376800-6536-45c5-9b6f-1aba53887da8" />
