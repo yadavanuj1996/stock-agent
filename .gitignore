@@ -16,3 +16,9 @@ env/
 .vscode/
 .idea/
 *.pem
+
+# 3-a2a build artifacts
+3-a2a/static/charts/
+3-a2a/static/frontend/
+3-a2a/frontend/node_modules/
+3-a2a/frontend/build/

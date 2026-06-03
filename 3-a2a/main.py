@@ -1,3 +1,4 @@
+import os
 import yaml
 import json
 import asyncio
@@ -11,6 +12,9 @@ from a2a.client import create_client, ClientConfig
 from a2a.types import SendMessageRequest, Message, Part, Role
 
 load_dotenv()
+
+RESEARCHER_URL = os.getenv("RESEARCHER_URL", "http://localhost:8001")
+ANALYST_URL = os.getenv("ANALYST_URL", "http://localhost:8002")
 
 AGENTS_MD = (Path(__file__).parent / "AGENTS.md").read_text()
 CONFIG = yaml.safe_load((Path(__file__).parent / "subagents.yaml").read_text())
@@ -52,7 +56,7 @@ async def _run_async(ticker: str) -> tuple[dict, dict]:
     )
 
     print(f"\n[Researcher] Fetching data for {ticker}...")
-    researcher = await create_client("http://localhost:8001", client_config=config)
+    researcher = await create_client(RESEARCHER_URL, client_config=config)
     research_data = None
     async for chunk in researcher.send_message(_build_request(ticker)):
         text = _extract_text(chunk)
@@ -64,7 +68,7 @@ async def _run_async(ticker: str) -> tuple[dict, dict]:
     print(f"[Researcher] Done. Summary length: {len(research_data['summary'])} chars")
 
     print(f"\n[Analyst] Analysing {ticker}...")
-    analyst = await create_client("http://localhost:8002", client_config=config)
+    analyst = await create_client(ANALYST_URL, client_config=config)
     payload = json.dumps({"research_data": research_data, "ticker": ticker})
     analysis_result = None
     async for chunk in analyst.send_message(_build_request(payload)):

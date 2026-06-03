@@ -1,3 +1,4 @@
+import os
 import yaml
 import asyncio
 import calendar as _cal
@@ -17,7 +18,7 @@ SKILL = (Path(__file__).parent.parent / "skills" / "stock-research" / "SKILL.md"
 CONFIG = yaml.safe_load((Path(__file__).parent.parent / "subagents.yaml").read_text())
 MODEL = CONFIG["subagents"]["researcher"]["model"]
 
-MCP_URL = "http://localhost:8050/mcp"
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8050/mcp")
 
 
 def _get_6mo_range() -> tuple[date, date]:
