@@ -15,4 +15,4 @@ env/
 # IDEs
 .vscode/
 .idea/
-
+*.pem
