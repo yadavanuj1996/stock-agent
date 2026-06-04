@@ -1,0 +1,72 @@
+name: Deploy Stock Agent
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 578125594324.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REPOSITORY: stock-agent
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push web image
+        working-directory: 3-a2a
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:web .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:web
+
+      - name: Build and push MCP image
+        working-directory: 3-a2a
+        run: |
+          docker build -f Dockerfile.mcp \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:mcp .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:mcp
+
+      - name: Build and push researcher image
+        working-directory: 3-a2a
+        run: |
+          docker build -f Dockerfile.researcher \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:researcher .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:researcher
+
+      - name: Build and push analyst image
+        working-directory: 3-a2a
+        run: |
+          docker build -f Dockerfile.analyst \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:analyst .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:analyst
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/stock-agent/3-a2a
+            git pull origin main
+            aws ecr get-login-password --region ap-south-1 | \
+              docker login --username AWS --password-stdin \
+              578125594324.dkr.ecr.ap-south-1.amazonaws.com
+            export ECR_REGISTRY=578125594324.dkr.ecr.ap-south-1.amazonaws.com
+            docker-compose pull
+            docker-compose up -d
+            docker system prune -f
