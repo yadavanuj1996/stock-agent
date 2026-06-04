@@ -4,6 +4,7 @@ try:
 except Exception as e:
     print(f"[warning] Could not load config from Parameter Store: {e}")
 
+import os
 import json
 import uvicorn
 import asyncio
@@ -20,6 +21,8 @@ from a2a.server.routes.agent_card_routes import create_agent_card_routes
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities, AgentInterface, Message, Part, Role
 
 from subagents.analyst import run as analyst_run
+
+AGENT_HOST = os.getenv("AGENT_HOST", "localhost")
 
 
 class AnalystAgentExecutor(AgentExecutor):
@@ -67,7 +70,7 @@ agent_card = AgentCard(
     supported_interfaces=[
         AgentInterface(
             protocol_binding="HTTP+JSON",
-            url="http://localhost:8002/",
+            url=f"http://{AGENT_HOST}:8002/",
             protocol_version="1.0",
         )
     ],

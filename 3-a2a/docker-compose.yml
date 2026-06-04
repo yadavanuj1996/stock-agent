@@ -13,6 +13,7 @@ services:
     environment:
       - AWS_DEFAULT_REGION=ap-south-1
       - MCP_URL=http://stock-mcp:8050/mcp
+      - AGENT_HOST=stock-researcher
     depends_on:
       - stock-mcp
     networks:
@@ -22,6 +23,7 @@ services:
     image: ${ECR_REGISTRY}/stock-agent:analyst
     environment:
       - AWS_DEFAULT_REGION=ap-south-1
+      - AGENT_HOST=stock-analyst
     depends_on:
       - stock-mcp
     networks:
