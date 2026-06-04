@@ -54,6 +54,34 @@ jobs:
             -t $ECR_REGISTRY/$ECR_REPOSITORY:analyst .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:analyst
 
+      - name: Create nginx directory on EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: mkdir -p ~/nginx
+
+      - name: Copy docker-compose.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "3-a2a/docker-compose.yml"
+          target: "~/"
+          strip_components: 1
+
+      - name: Copy nginx.conf to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "3-a2a/nginx/nginx.conf"
+          target: "~/nginx/"
+          strip_components: 2
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -61,12 +89,10 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/stock-agent/3-a2a
-            git pull origin main
             aws ecr get-login-password --region ap-south-1 | \
               docker login --username AWS --password-stdin \
               578125594324.dkr.ecr.ap-south-1.amazonaws.com
             export ECR_REGISTRY=578125594324.dkr.ecr.ap-south-1.amazonaws.com
-            docker-compose pull
-            docker-compose up -d
+            docker compose pull
+            docker compose up -d
             docker system prune -f
