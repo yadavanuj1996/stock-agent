@@ -226,7 +226,8 @@ def run(research_data: dict, ticker: str) -> dict:
 
     # step 2 — generate charts directly
     print("  → Generating charts...")
-    output_dir = tempfile.mkdtemp()
+    output_dir = "/tmp/charts"
+    os.makedirs(output_dir, exist_ok=True)
     df_6mo = _load_df(csv_data)
     df_1y = _load_df(csv_1y_data)
     df_sp500 = _load_df(sp500_csv_data)
