@@ -23,7 +23,15 @@ ANALYSIS_SKILL = (Path(__file__).parent.parent / "skills" / "stock-analysis" / "
 CONFIG = yaml.safe_load((Path(__file__).parent.parent / "subagents.yaml").read_text())
 MODEL = CONFIG["subagents"]["analyst"]["model"]
 
-llm = ChatOpenAI(model=MODEL)
+_llm = None
+
+
+def get_llm():
+    global _llm
+    if _llm is None:
+        _llm = ChatOpenAI(model=MODEL)
+    return _llm
+
 
 plt.style.use('dark_background')
 
@@ -237,7 +245,7 @@ def run(research_data: dict, ticker: str) -> dict:
     # step 3 — LLM writes text analysis
     print("  → Running text analysis...")
     indicators = _compute_indicators(csv_data, csv_1y_data, sp500_return)
-    response = llm.invoke([
+    response = get_llm().invoke([
         SystemMessage(f"""
         You are a stock analyst. Write a technical analysis of the stock.
 

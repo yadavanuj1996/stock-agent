@@ -20,6 +20,15 @@ MODEL = CONFIG["subagents"]["researcher"]["model"]
 
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8050/mcp")
 
+_llm = None
+
+
+def get_llm():
+    global _llm
+    if _llm is None:
+        _llm = ChatOpenAI(model=MODEL)
+    return _llm
+
 
 def _get_6mo_range() -> tuple[date, date]:
     """Return (start_date, end_date) where end is the latest trading day
@@ -76,7 +85,7 @@ async def _run_async(ticker: str) -> dict:
                 for t in mcp_tools
             ]
 
-            llm_with_tools = llm.bind_tools(lc_tools)
+            llm_with_tools = get_llm().bind_tools(lc_tools)
 
             messages = [
                 SystemMessage(f"""

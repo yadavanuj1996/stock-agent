@@ -3,6 +3,12 @@ import uvicorn
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+try:
+    from config import load_config
+    load_config()
+except Exception as e:
+    print(f"[warning] Could not load config from Parameter Store: {e}")
+
 from fastapi import FastAPI
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
