@@ -54,8 +54,6 @@ def _get_6mo_range() -> tuple[date, date]:
     print(f"  → 6-month window: {start_date} → {end_date}")
     return start_date, end_date
 
-llm = ChatOpenAI(model=MODEL)
-
 
 async def _run_async(ticker: str) -> dict:
     # CSV fetched directly — not through MCP
