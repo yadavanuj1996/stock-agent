@@ -19,11 +19,18 @@ ANALYST_URL = os.getenv("ANALYST_URL", "http://localhost:8002")
 AGENTS_MD = (Path(__file__).parent / "AGENTS.md").read_text()
 CONFIG = yaml.safe_load((Path(__file__).parent / "subagents.yaml").read_text())
 ORCHESTRATOR_MODEL = CONFIG["orchestrator"]["model"]
-llm = ChatOpenAI(model=ORCHESTRATOR_MODEL)
+_llm = None
+
+
+def get_llm():
+    global _llm
+    if _llm is None:
+        _llm = ChatOpenAI(model=ORCHESTRATOR_MODEL)
+    return _llm
 
 
 def extract_ticker(user_input: str) -> str:
-    response = llm.invoke([
+    response = get_llm().invoke([
         SystemMessage("Extract the stock ticker symbol from the user input. Return ONLY the ticker symbol in uppercase. Nothing else."),
         HumanMessage(user_input)
     ])
@@ -95,7 +102,7 @@ def run(user_input: str) -> dict:
     research_data, analysis_result = asyncio.run(_run_async(ticker))
 
     print("\n[Orchestrator] Compiling final response...")
-    final_response = llm.invoke([
+    final_response = get_llm().invoke([
         SystemMessage(f"""
         You are a stock research orchestrator.
         Follow these guidelines:
