@@ -105,12 +105,15 @@ async def analyse(body: AnalyseRequest, session: dict = Depends(_require_auth)):
     chart_filenames = []
     for chart_path in result.get("charts", []):
         src = Path(chart_path)
+        if src.exists() and src.resolve() != (CHARTS_DIR / src.name).resolve():
+            shutil.copy2(src, CHARTS_DIR / src.name)
         chart_filenames.append(src.name)
 
     return {
         "response": result["response"],
         "charts": chart_filenames,
         "ticker": result["ticker"],
+        "sentiment": result.get("sentiment"),
     }
 
 

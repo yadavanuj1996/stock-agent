@@ -54,6 +54,13 @@ jobs:
             -t $ECR_REGISTRY/$ECR_REPOSITORY:analyst .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:analyst
 
+      - name: Build and push sentiment image
+        working-directory: 3-a2a
+        run: |
+          docker build -f Dockerfile.sentiment \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:sentiment .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:sentiment
+
       - name: Create nginx directory on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:

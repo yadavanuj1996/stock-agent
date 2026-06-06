@@ -31,17 +31,27 @@ services:
     networks:
       - stock-network
 
+  stock-sentiment:
+    image: ${ECR_REGISTRY}/stock-agent:sentiment
+    environment:
+      - AWS_DEFAULT_REGION=ap-south-1
+      - AGENT_HOST=stock-sentiment
+    networks:
+      - stock-network
+
   stock-web:
     image: ${ECR_REGISTRY}/stock-agent:web
     environment:
       - AWS_DEFAULT_REGION=ap-south-1
       - RESEARCHER_URL=http://stock-researcher:8001
       - ANALYST_URL=http://stock-analyst:8002
+      - SENTIMENT_URL=http://stock-sentiment:8003
     volumes:
       - charts-data:/app/static/charts
     depends_on:
       - stock-researcher
       - stock-analyst
+      - stock-sentiment
     networks:
       - stock-network
 

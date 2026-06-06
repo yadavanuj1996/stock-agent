@@ -15,6 +15,7 @@ load_dotenv()
 
 RESEARCHER_URL = os.getenv("RESEARCHER_URL", "http://localhost:8001")
 ANALYST_URL = os.getenv("ANALYST_URL", "http://localhost:8002")
+SENTIMENT_URL = os.getenv("SENTIMENT_URL", "http://localhost:8003")
 
 AGENTS_MD = (Path(__file__).parent / "AGENTS.md").read_text()
 CONFIG = yaml.safe_load((Path(__file__).parent / "subagents.yaml").read_text())
@@ -55,8 +56,8 @@ def _extract_text(chunk) -> str:
     return ""
 
 
-async def _run_async(ticker: str) -> tuple[dict, dict]:
-    """Run researcher then analyst in a single event loop."""
+async def _run_async(ticker: str) -> tuple[dict, dict, dict]:
+    """Run researcher, then analyst and sentiment in parallel."""
     config = ClientConfig(
         supported_protocol_bindings=["HTTP+JSON"],
         httpx_client=httpx.AsyncClient(timeout=300.0),
@@ -74,20 +75,30 @@ async def _run_async(ticker: str) -> tuple[dict, dict]:
         raise RuntimeError("Researcher agent returned no result")
     print(f"[Researcher] Done. Summary length: {len(research_data['summary'])} chars")
 
-    print(f"\n[Analyst] Analysing {ticker}...")
-    analyst = await create_client(ANALYST_URL, client_config=config)
-    payload = json.dumps({"research_data": research_data, "ticker": ticker})
-    analysis_result = None
-    async for chunk in analyst.send_message(_build_request(payload)):
-        text = _extract_text(chunk)
-        if text:
-            analysis_result = json.loads(text)
-            break
-    if analysis_result is None:
+    async def run_analyst():
+        print(f"\n[Analyst] Analysing {ticker}...")
+        analyst = await create_client(ANALYST_URL, client_config=config)
+        payload = json.dumps({"research_data": research_data, "ticker": ticker})
+        async for chunk in analyst.send_message(_build_request(payload)):
+            text = _extract_text(chunk)
+            if text:
+                print("[Analyst] Done.")
+                return json.loads(text)
         raise RuntimeError("Analyst agent returned no result")
-    print("[Analyst] Done.")
 
-    return research_data, analysis_result
+    async def run_sentiment():
+        print(f"\n[Sentiment] Analysing sentiment for {ticker}...")
+        sentiment_client = await create_client(SENTIMENT_URL, client_config=config)
+        async for chunk in sentiment_client.send_message(_build_request(ticker)):
+            text = _extract_text(chunk)
+            if text:
+                print("[Sentiment] Done.")
+                return json.loads(text)
+        raise RuntimeError("Sentiment agent returned no result")
+
+    analysis_result, sentiment_result = await asyncio.gather(run_analyst(), run_sentiment())
+
+    return research_data, analysis_result, sentiment_result
 
 
 def run(user_input: str) -> dict:
@@ -99,7 +110,7 @@ def run(user_input: str) -> dict:
     ticker = extract_ticker(user_input)
     print(f"[Orchestrator] Ticker identified: {ticker}")
 
-    research_data, analysis_result = asyncio.run(_run_async(ticker))
+    research_data, analysis_result, sentiment_result = asyncio.run(_run_async(ticker))
 
     print("\n[Orchestrator] Compiling final response...")
     final_response = get_llm().invoke([
@@ -117,6 +128,11 @@ def run(user_input: str) -> dict:
         Analysis completed:
         {analysis_result['analysis']}
 
+        Social media sentiment ({sentiment_result.get('source', 'StockTwits')}):
+        Overall: {sentiment_result.get('overall', 'N/A')} (Confidence: {sentiment_result.get('confidence', 'N/A')})
+        Bullish: {sentiment_result.get('bullish_count', 0)}, Bearish: {sentiment_result.get('bearish_count', 0)}, Neutral: {sentiment_result.get('neutral_count', 0)}
+        Key themes: {', '.join(sentiment_result.get('themes', []))}
+
         Charts already generated: {len(analysis_result['charts'])} charts (price+MA, RSI, MACD, volume, benchmark vs S&P 500)
 
         Compile a clean, well structured final response for the user.
@@ -128,4 +144,5 @@ def run(user_input: str) -> dict:
         "response": final_response.content,
         "charts": analysis_result["charts"],
         "ticker": ticker,
+        "sentiment": sentiment_result,
     }

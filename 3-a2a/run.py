@@ -7,6 +7,7 @@ import uvicorn
 from server import mcp
 from subagents.researcher_agent import serve as serve_researcher
 from subagents.analyst_agent import serve as serve_analyst
+from subagents.sentiment_agent import serve as serve_sentiment
 
 
 def serve_mcp():
@@ -49,9 +50,11 @@ if __name__ == "__main__":
 
     threading.Thread(target=serve_researcher, daemon=True).start()
     threading.Thread(target=serve_analyst, daemon=True).start()
+    threading.Thread(target=serve_sentiment, daemon=True).start()
 
     wait_for_agent("http://localhost:8001", "Researcher Agent")
     wait_for_agent("http://localhost:8002", "Analyst Agent")
+    wait_for_agent("http://localhost:8003", "Sentiment Agent")
 
     print("\n[run.py] All services ready. Starting web server on http://localhost:8000\n")
 

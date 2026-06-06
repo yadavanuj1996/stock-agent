@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import ChartGrid from '../components/ChartGrid';
 import AnalysisPanel from '../components/AnalysisPanel';
+import SentimentPanel from '../components/SentimentPanel';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { analyse } from '../services/api';
 
@@ -255,7 +256,8 @@ export default function Dashboard() {
           {!loading && result && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <AnalysisPanel ticker={result.ticker} response={result.response} />
-              <ChartGrid charts={result.charts} /> 
+              <SentimentPanel sentiment={result.sentiment} />
+              <ChartGrid charts={result.charts} />
             </div>
           )}
         </main>
