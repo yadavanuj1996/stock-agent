@@ -102,4 +102,5 @@ jobs:
             export ECR_REGISTRY=578125594324.dkr.ecr.ap-south-1.amazonaws.com
             docker compose pull
             docker compose up -d
+            docker compose restart nginx
             docker system prune -f
